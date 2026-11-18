@@ -1,0 +1,349 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Global Security Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isVerifiedOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isStr(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isValidStringList(listVal, maxItems) {
+      return listVal is list && listVal.size() <= maxItems && (listVal.size() == 0 || listVal[0] is string);
+    }
+
+    function isValidMapList(listVal, minItems, maxItems) {
+      return listVal is list && listVal.size() >= minItems && listVal.size() <= maxItems && (listVal.size() == 0 || listVal[0] is map);
+    }
+
+    // 3. Entity Validation Blueprints
+    function isValidUser(data) {
+      return data.keys().hasAll([
+        'userId', 'displayName', 'email', 'photoURL', 'major', 'semester', 'subjects',
+        'theme', 'notificationsEnabled', 'onboardingCompleted', 'planTier',
+        'dailyAiQuestions', 'dailyPdfSummaries', 'dailyQuizzes', 'lastQuotaDate',
+        'studyStreak', 'lastActiveDate', 'quizzesCompleted', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'userId', 'displayName', 'email', 'photoURL', 'major', 'semester', 'subjects',
+        'theme', 'notificationsEnabled', 'onboardingCompleted', 'planTier',
+        'dailyAiQuestions', 'dailyPdfSummaries', 'dailyQuizzes', 'lastQuotaDate',
+        'studyStreak', 'lastActiveDate', 'quizzesCompleted', 'createdAt', 'updatedAt'
+      ]) &&
+      isValidId(data.userId) &&
+      data.userId == request.auth.uid &&
+      isStr(data.displayName, 1, 100) &&
+      isStr(data.email, 3, 200) &&
+      isStr(data.photoURL, 0, 1000) &&
+      isStr(data.major, 1, 100) &&
+      isStr(data.semester, 1, 40) &&
+      isValidStringList(data.subjects, 15) &&
+      data.theme in ['light', 'dark'] &&
+      data.notificationsEnabled is bool &&
+      data.onboardingCompleted is bool &&
+      data.planTier == 'free' &&
+      data.dailyAiQuestions is int && data.dailyAiQuestions >= 0 && data.dailyAiQuestions <= 50 &&
+      data.dailyPdfSummaries is int && data.dailyPdfSummaries >= 0 && data.dailyPdfSummaries <= 20 &&
+      data.dailyQuizzes is int && data.dailyQuizzes >= 0 && data.dailyQuizzes <= 20 &&
+      isStr(data.lastQuotaDate, 1, 20) &&
+      data.studyStreak is int && data.studyStreak >= 0 && data.studyStreak <= 5000 &&
+      isStr(data.lastActiveDate, 1, 20) &&
+      data.quizzesCompleted is int && data.quizzesCompleted >= 0 && data.quizzesCompleted <= 50000 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidChatHistory(data) {
+      return data.keys().hasAll(['userId', 'title', 'subject', 'messages', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['userId', 'title', 'subject', 'messages', 'createdAt', 'updatedAt']) &&
+        isValidId(data.userId) &&
+        data.userId == request.auth.uid &&
+        isStr(data.title, 1, 160) &&
+        isStr(data.subject, 1, 80) &&
+        isValidMapList(data.messages, 1, 100) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUploadedPDF(data) {
+      return data.keys().hasAll(['userId', 'fileName', 'fileSize', 'pageCount', 'extractedSnippet', 'createdAt']) &&
+        data.keys().hasOnly(['userId', 'fileName', 'fileSize', 'pageCount', 'extractedSnippet', 'createdAt']) &&
+        isValidId(data.userId) &&
+        data.userId == request.auth.uid &&
+        isStr(data.fileName, 1, 200) &&
+        data.fileSize is int && data.fileSize >= 0 && data.fileSize <= 50000000 &&
+        data.pageCount is int && data.pageCount >= 1 && data.pageCount <= 2000 &&
+        isStr(data.extractedSnippet, 1, 4000) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidSummary(data) {
+      return data.keys().hasAll([
+        'userId', 'pdfId', 'fileName', 'subject', 'shortSummary',
+        'mediumSummary', 'detailedSummary', 'keyPoints', 'definitions',
+        'revisionNotes', 'createdAt'
+      ]) && data.keys().hasOnly([
+        'userId', 'pdfId', 'fileName', 'subject', 'shortSummary',
+        'mediumSummary', 'detailedSummary', 'keyPoints', 'definitions',
+        'revisionNotes', 'createdAt'
+      ]) &&
+      isValidId(data.userId) &&
+      data.userId == request.auth.uid &&
+      isValidId(data.pdfId) &&
+      isStr(data.fileName, 1, 200) &&
+      isStr(data.subject, 1, 80) &&
+      isStr(data.shortSummary, 1, 4000) &&
+      isStr(data.mediumSummary, 1, 10000) &&
+      isStr(data.detailedSummary, 1, 20000) &&
+      isValidStringList(data.keyPoints, 25) &&
+      isValidMapList(data.definitions, 0, 25) &&
+      isStr(data.revisionNotes, 1, 12000) &&
+      data.createdAt is timestamp;
+    }
+
+    function isValidQuiz(data) {
+      return data.keys().hasAll(['userId', 'subject', 'topic', 'difficulty', 'questionCount', 'questions', 'createdAt']) &&
+        data.keys().hasOnly(['userId', 'subject', 'topic', 'difficulty', 'questionCount', 'questions', 'createdAt']) &&
+        isValidId(data.userId) &&
+        data.userId == request.auth.uid &&
+        isStr(data.subject, 1, 80) &&
+        isStr(data.topic, 1, 160) &&
+        data.difficulty in ['Easy', 'Medium', 'Hard'] &&
+        data.questionCount is int && data.questionCount in [5, 10, 15, 20] &&
+        isValidMapList(data.questions, 1, 20) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidQuizResult(data) {
+      return data.keys().hasAll([
+        'userId', 'quizId', 'subject', 'topic', 'score',
+        'totalQuestions', 'selectedAnswers', 'weakAreas', 'feedback', 'completedAt'
+      ]) && data.keys().hasOnly([
+        'userId', 'quizId', 'subject', 'topic', 'score',
+        'totalQuestions', 'selectedAnswers', 'weakAreas', 'feedback', 'completedAt'
+      ]) &&
+      isValidId(data.userId) &&
+      data.userId == request.auth.uid &&
+      isValidId(data.quizId) &&
+      isStr(data.subject, 1, 80) &&
+      isStr(data.topic, 1, 160) &&
+      data.score is int && data.score >= 0 && data.score <= 20 &&
+      data.totalQuestions is int && data.totalQuestions in [5, 10, 15, 20] &&
+      data.selectedAnswers is list && data.selectedAnswers.size() >= 1 && data.selectedAnswers.size() <= 20 && data.selectedAnswers[0] is int &&
+      isValidStringList(data.weakAreas, 10) &&
+      isStr(data.feedback, 1, 2000) &&
+      data.completedAt is timestamp;
+    }
+
+    function isValidFlashcardDeck(data) {
+      return data.keys().hasAll(['userId', 'title', 'subject', 'cards', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['userId', 'title', 'subject', 'cards', 'createdAt', 'updatedAt']) &&
+        isValidId(data.userId) &&
+        data.userId == request.auth.uid &&
+        isStr(data.title, 1, 160) &&
+        isStr(data.subject, 1, 80) &&
+        isValidMapList(data.cards, 1, 30) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidStudyTask(data) {
+      return data.keys().hasAll(['userId', 'subject', 'topic', 'title', 'dueDate', 'completed', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['userId', 'subject', 'topic', 'title', 'dueDate', 'completed', 'createdAt', 'updatedAt']) &&
+        isValidId(data.userId) &&
+        data.userId == request.auth.uid &&
+        isStr(data.subject, 1, 80) &&
+        isStr(data.topic, 1, 140) &&
+        isStr(data.title, 1, 200) &&
+        isStr(data.dueDate, 1, 30) &&
+        data.completed is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSavedMaterial(data) {
+      return data.keys().hasAll(['userId', 'type', 'title', 'subject', 'content', 'referenceId', 'createdAt']) &&
+        data.keys().hasOnly(['userId', 'type', 'title', 'subject', 'content', 'referenceId', 'createdAt']) &&
+        isValidId(data.userId) &&
+        data.userId == request.auth.uid &&
+        data.type in ['ai_answer', 'summary', 'quiz', 'flashcard_deck', 'revision_note'] &&
+        isStr(data.title, 1, 200) &&
+        isStr(data.subject, 1, 80) &&
+        isStr(data.content, 1, 30000) &&
+        isStr(data.referenceId, 0, 128) &&
+        data.createdAt is timestamp;
+    }
+
+    // 4. Collection Match Blocks
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId) &&
+        isVerifiedOwner(userId) &&
+        isValidUser(incoming()) &&
+        incoming().userId == userId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(userId) &&
+        isVerifiedOwner(userId) &&
+        isValidUser(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().planTier == existing().planTier &&
+        incoming().updatedAt == request.time &&
+        (
+          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'major', 'semester', 'subjects', 'onboardingCompleted', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['theme', 'notificationsEnabled', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['dailyAiQuestions', 'dailyPdfSummaries', 'dailyQuizzes', 'lastQuotaDate', 'studyStreak', 'lastActiveDate', 'quizzesCompleted', 'updatedAt'])
+        );
+      allow delete: if false;
+    }
+
+    match /chatHistory/{chatId} {
+      allow get: if isValidId(chatId) && isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isValidId(chatId) &&
+        isVerifiedUser() &&
+        isValidChatHistory(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(chatId) &&
+        isVerifiedUser() &&
+        existing().userId == request.auth.uid &&
+        isValidChatHistory(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'messages', 'updatedAt']);
+      allow delete: if isValidId(chatId) && isVerifiedUser() && existing().userId == request.auth.uid;
+    }
+
+    match /uploadedPDFs/{pdfId} {
+      allow get: if isValidId(pdfId) && isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isValidId(pdfId) &&
+        isVerifiedUser() &&
+        isValidUploadedPDF(incoming()) &&
+        incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(pdfId) && isVerifiedUser() && existing().userId == request.auth.uid;
+    }
+
+    match /summaries/{summaryId} {
+      allow get: if isValidId(summaryId) && isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isValidId(summaryId) &&
+        isVerifiedUser() &&
+        isValidSummary(incoming()) &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/uploadedPDFs/$(incoming().pdfId)) &&
+        get(/databases/$(database)/documents/uploadedPDFs/$(incoming().pdfId)).data.userId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isValidId(summaryId) && isVerifiedUser() && existing().userId == request.auth.uid;
+    }
+
+    match /quizzes/{quizId} {
+      allow get: if isValidId(quizId) && isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isValidId(quizId) &&
+        isVerifiedUser() &&
+        isValidQuiz(incoming()) &&
+        incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(quizId) && isVerifiedUser() && existing().userId == request.auth.uid;
+    }
+
+    match /quizResults/{resultId} {
+      allow get: if isValidId(resultId) && isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isValidId(resultId) &&
+        isVerifiedUser() &&
+        isValidQuizResult(incoming()) &&
+        incoming().completedAt == request.time &&
+        exists(/databases/$(database)/documents/quizzes/$(incoming().quizId)) &&
+        get(/databases/$(database)/documents/quizzes/$(incoming().quizId)).data.userId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isValidId(resultId) && isVerifiedUser() && existing().userId == request.auth.uid;
+    }
+
+    match /flashcards/{deckId} {
+      allow get: if isValidId(deckId) && isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isValidId(deckId) &&
+        isVerifiedUser() &&
+        isValidFlashcardDeck(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(deckId) &&
+        isVerifiedUser() &&
+        existing().userId == request.auth.uid &&
+        isValidFlashcardDeck(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['cards', 'title', 'updatedAt']);
+      allow delete: if isValidId(deckId) && isVerifiedUser() && existing().userId == request.auth.uid;
+    }
+
+    match /studyTasks/{taskId} {
+      allow get: if isValidId(taskId) && isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isValidId(taskId) &&
+        isVerifiedUser() &&
+        isValidStudyTask(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(taskId) &&
+        isVerifiedUser() &&
+        existing().userId == request.auth.uid &&
+        isValidStudyTask(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['completed', 'title', 'topic', 'subject', 'dueDate', 'updatedAt']);
+      allow delete: if isValidId(taskId) && isVerifiedUser() && existing().userId == request.auth.uid;
+    }
+
+    match /savedMaterials/{itemId} {
+      allow get: if isValidId(itemId) && isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isValidId(itemId) &&
+        isVerifiedUser() &&
+        isValidSavedMaterial(incoming()) &&
+        incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(itemId) && isVerifiedUser() && existing().userId == request.auth.uid;
+    }
+  }
+}

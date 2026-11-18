@@ -1,0 +1,207 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Private student profile, preferences, learning statistics, and daily free-tier usage counters.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "photoURL": { "type": "string", "maxLength": 1000 },
+        "major": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "semester": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "subjects": { "type": "array", "description": "Selected engineering/CS subjects (max 15)." },
+        "theme": { "type": "string", "enum": ["light", "dark"] },
+        "notificationsEnabled": { "type": "boolean" },
+        "onboardingCompleted": { "type": "boolean" },
+        "planTier": { "type": "string", "enum": ["free", "premium_preview"] },
+        "dailyAiQuestions": { "type": "integer" },
+        "dailyPdfSummaries": { "type": "integer" },
+        "dailyQuizzes": { "type": "integer" },
+        "lastQuotaDate": { "type": "string", "maxLength": 20 },
+        "studyStreak": { "type": "integer" },
+        "lastActiveDate": { "type": "string", "maxLength": 20 },
+        "quizzesCompleted": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "displayName", "email", "major", "semester", "subjects",
+        "theme", "notificationsEnabled", "onboardingCompleted", "planTier",
+        "dailyAiQuestions", "dailyPdfSummaries", "dailyQuizzes", "lastQuotaDate",
+        "studyStreak", "lastActiveDate", "quizzesCompleted", "createdAt", "updatedAt"
+      ]
+    },
+    "ChatHistory": {
+      "title": "ChatHistory",
+      "description": "Multi-turn AI Tutor conversation session owned by a student.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "subject": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "messages": { "type": "array", "description": "Ordered chat turns (max 100)." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "subject", "messages", "createdAt", "updatedAt"]
+    },
+    "UploadedPDF": {
+      "title": "UploadedPDF",
+      "description": "Metadata and extracted text preview for an uploaded academic PDF.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fileName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "fileSize": { "type": "integer" },
+        "pageCount": { "type": "integer" },
+        "extractedSnippet": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "fileName", "fileSize", "pageCount", "extractedSnippet", "createdAt"]
+    },
+    "Summary": {
+      "title": "Summary",
+      "description": "AI-generated short, medium, and detailed PDF summaries with key definitions and revision notes.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "pdfId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fileName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "subject": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "shortSummary": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "mediumSummary": { "type": "string", "minLength": 1, "maxLength": 10000 },
+        "detailedSummary": { "type": "string", "minLength": 1, "maxLength": 20000 },
+        "keyPoints": { "type": "array", "description": "Up to 25 key bullet points." },
+        "definitions": { "type": "array", "description": "Up to 25 term-definition objects." },
+        "revisionNotes": { "type": "string", "minLength": 1, "maxLength": 12000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "pdfId", "fileName", "subject", "shortSummary",
+        "mediumSummary", "detailedSummary", "keyPoints", "definitions",
+        "revisionNotes", "createdAt"
+      ]
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "description": "Generated multiple-choice quiz set owned by a student.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "subject": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "topic": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "difficulty": { "type": "string", "enum": ["Easy", "Medium", "Hard"] },
+        "questionCount": { "type": "integer" },
+        "questions": { "type": "array", "description": "Up to 20 MCQ objects." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "subject", "topic", "difficulty", "questionCount", "questions", "createdAt"]
+    },
+    "QuizResult": {
+      "title": "QuizResult",
+      "description": "Completed quiz attempt score and areas to improve.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "quizId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "subject": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "topic": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "score": { "type": "integer" },
+        "totalQuestions": { "type": "integer" },
+        "selectedAnswers": { "type": "array", "description": "Up to 20 selected indices." },
+        "weakAreas": { "type": "array", "description": "Up to 10 improvement areas." },
+        "feedback": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "completedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "quizId", "subject", "topic", "score",
+        "totalQuestions", "selectedAnswers", "weakAreas", "feedback", "completedAt"
+      ]
+    },
+    "FlashcardDeck": {
+      "title": "FlashcardDeck",
+      "description": "Collection of interactive flashcards with per-card mastery progress.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "subject": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "cards": { "type": "array", "description": "Up to 30 flashcard objects." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "subject", "cards", "createdAt", "updatedAt"]
+    },
+    "StudyTask": {
+      "title": "StudyTask",
+      "description": "Student study planner task with subject, topic, deadline, and completion state.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "subject": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "topic": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "dueDate": { "type": "string", "minLength": 1, "maxLength": 30 },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "subject", "topic", "title", "dueDate", "completed", "createdAt", "updatedAt"]
+    },
+    "SavedMaterial": {
+      "title": "SavedMaterial",
+      "description": "Bookmarked AI answers, PDF summaries, quizzes, flashcards, or revision notes.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "type": { "type": "string", "enum": ["ai_answer", "summary", "quiz", "flashcard_deck", "revision_note"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "subject": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "content": { "type": "string", "minLength": 1, "maxLength": 30000 },
+        "referenceId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "title", "subject", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Private student profile documents keyed by Firebase Auth UID."
+    },
+    "/chatHistory/{chatId}": {
+      "schema": { "$ref": "#/entities/ChatHistory" },
+      "description": "AI Tutor conversation sessions owned by individual students."
+    },
+    "/uploadedPDFs/{pdfId}": {
+      "schema": { "$ref": "#/entities/UploadedPDF" },
+      "description": "Uploaded PDF document metadata and text snippets."
+    },
+    "/summaries/{summaryId}": {
+      "schema": { "$ref": "#/entities/Summary" },
+      "description": "Generated PDF summaries and revision notes."
+    },
+    "/quizzes/{quizId}": {
+      "schema": { "$ref": "#/entities/Quiz" },
+      "description": "AI-generated MCQ quizzes."
+    },
+    "/quizResults/{resultId}": {
+      "schema": { "$ref": "#/entities/QuizResult" },
+      "description": "Completed quiz attempts and improvement diagnostics."
+    },
+    "/flashcards/{deckId}": {
+      "schema": { "$ref": "#/entities/FlashcardDeck" },
+      "description": "Flashcard decks with learned/practice tracking."
+    },
+    "/studyTasks/{taskId}": {
+      "schema": { "$ref": "#/entities/StudyTask" },
+      "description": "Daily and weekly study planner tasks."
+    },
+    "/savedMaterials/{itemId}": {
+      "schema": { "$ref": "#/entities/SavedMaterial" },
+      "description": "Bookmarked study artifacts saved by the student."
+    }
+  }
+}
